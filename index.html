@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Seleção de Fotos · Jess Ferreira Fotografia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  // ============================================================
+  // COLE AQUI o link do Apps Script (termina em /exec).
+  // Enquanto estiver vazio, o site abre em modo demonstração.
+  const API_URL = 'https://script.google.com/macros/s/AKfycbx00f5d2nk5_oGIaiAK44Is9YlyibTBaGbJlpTtT3uTY0KDnxzed6prcT4BJvHbIi9DKA/exec';
+  // ============================================================
+</script>
+<style>
+:root{--bg:#faf7f3;--card:#fff;--ink:#2b2522;--soft:#7a6f68;--line:#e9e2da;--accent:#b5715a;--accent-soft:#f3e4dd;--warn:#c0843d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font:inherit}
+h1,h2,.serif{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600}
+img{-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
+.hidden{display:none!important}
+
+/* login */
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login .box{width:100%;max-width:360px;text-align:center}
+.studio{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--soft)}
+.login h1{font-size:36px;margin:8px 0 6px;line-height:1.1}
+.login p{color:var(--soft);font-size:14px;line-height:1.5;margin-bottom:22px}
+.field{width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px;margin-bottom:10px;text-align:center}
+.field:focus{outline:2px solid var(--accent);border-color:transparent}
+.err{color:#b24a3a;font-size:14px;min-height:20px;margin:4px 0 8px}
+.btn{background:var(--accent);color:#fff;padding:13px 18px;border-radius:12px;font-weight:600;font-size:15px;white-space:nowrap}
+.btn:disabled{opacity:.45}
+.btn.full{width:100%}
+.btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.demo-flag{position:relative;background:#2b2522;color:#efe7df;font-size:12px;text-align:center;padding:6px;z-index:100}
+
+/* galeria */
+#app{padding-bottom:110px}
+header{padding:30px 18px 14px;text-align:center}
+header h1{font-size:34px;margin:6px 0 4px;line-height:1.1}
+header p{color:var(--soft);font-size:14px;max-width:460px;margin:0 auto;line-height:1.5}
+.tabs{display:flex;gap:8px;justify-content:center;padding:6px 16px 12px;position:sticky;top:0;background:var(--bg);z-index:5}
+.tabs button{padding:8px 16px;border-radius:999px;border:1px solid var(--line);font-size:14px;background:var(--card)}
+.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.saved{font-size:12px;color:var(--soft);text-align:center;height:16px;margin-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px;max-width:1100px;margin:0 auto}
+@media(min-width:700px){.grid{grid-template-columns:repeat(5,1fr);gap:8px;padding:0 16px}}
+.ph{position:relative;aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:#ece6df}
+.ph img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s}
+.ph img.ok{opacity:1}
+.ph .heart{position:absolute;right:4px;bottom:4px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.88);display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.15);color:var(--accent)}
+.ph .heart svg{width:18px;height:18px}
+.ph.sel{outline:3px solid var(--accent);outline-offset:-3px}
+.ph.locked .heart{background:var(--accent);color:#fff}
+.ph .tag{position:absolute;left:4px;top:4px;font-size:10px;background:rgba(43,37,34,.72);color:#fff;padding:2px 6px;border-radius:4px}
+.ph .cm{position:absolute;left:4px;bottom:6px;font-size:11px;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:4px}
+.empty{text-align:center;color:var(--soft);padding:50px 20px;grid-column:1/-1;line-height:1.6}
+.done{max-width:640px;margin:0 16px 14px;background:#eef4ef;border:1px solid #d3e3d6;color:#3e5f47;border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.5}
+@media(min-width:672px){.done{margin:0 auto 14px}}
+.done b{display:block;font-size:16px;margin-bottom:2px}
+
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:20;box-shadow:0 -4px 20px rgba(0,0,0,.05)}
+.bar .info{flex:1;min-width:0}
+.bar .count{font-weight:600;font-size:16px}
+.bar .sub{font-size:12px;color:var(--soft);margin-top:2px}
+.bar .sub.extra{color:var(--warn);font-weight:500}
+.progress{height:5px;background:var(--line);border-radius:9px;margin-top:6px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:9px;transition:width .25s}
+
+/* foto grande */
+.lb{position:fixed;inset:0;background:rgba(20,17,15,.97);z-index:40;display:none;flex-direction:column}
+.lb.open{display:flex}
+.lb .top{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;color:#fff;font-size:14px}
+.lb .top button{color:#fff;font-size:28px;width:44px;height:44px}
+.lb .stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;padding:0 8px}
+.lb .stage img{max-width:100%;max-height:100%;border-radius:6px}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:24px}
+.lb .prev{left:10px}.lb .next{right:10px}
+.lb .bottom{padding:12px 14px calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.lb .fav{padding:14px;border-radius:12px;background:#fff;color:var(--ink);font-weight:600;display:flex;gap:8px;align-items:center;justify-content:center}
+.lb .fav.on{background:var(--accent);color:#fff}
+.lb .fav svg{width:18px;height:18px}
+.lb textarea{width:100%;border-radius:12px;border:none;padding:10px 12px;font-size:14px;resize:none;background:#3a332f;color:#fff}
+.lb textarea::placeholder{color:#a99d94}
+
+/* janelas */
+.modal{position:fixed;inset:0;background:rgba(20,17,15,.5);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+@media(min-width:700px){.modal{align-items:center}}
+.sheet{background:var(--card);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+@media(min-width:700px){.sheet{border-radius:20px}}
+.sheet h2{font-size:28px;margin-bottom:6px}
+.sheet p{color:var(--soft);font-size:14px;line-height:1.5}
+.lines{margin:16px 0;border-top:1px solid var(--line)}
+.lines div{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+.lines .total{font-weight:600;font-size:17px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.actions .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;margin:0 auto 12px}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body oncontextmenu="return false">
+
+<div class="demo-flag hidden" id="demoFlag">Modo demonstração — fotos de exemplo</div>
+
+<!-- TELA DE SENHA -->
+<section class="login" id="login">
+  <form class="box" id="loginForm">
+    <div class="studio">Jess Ferreira Fotografia</div>
+    <h1>Seleção de fotos</h1>
+    <p>Digite a senha que você recebeu para ver suas fotos.</p>
+    <input class="field hidden" id="fCod" placeholder="Código da galeria" autocomplete="off" autocapitalize="none">
+    <input class="field" id="fSenha" placeholder="Senha" inputmode="numeric" autocomplete="off">
+    <div class="err" id="loginErr"></div>
+    <button class="btn full" id="loginBtn">Ver minhas fotos</button>
+  </form>
+</section>
+
+<!-- CARREGANDO -->
+<section class="login hidden" id="loading">
+  <div class="box"><div class="spin"></div><p>Carregando suas fotos…</p></div>
+</section>
+
+<!-- GALERIA -->
+<section id="app" class="hidden">
+  <header>
+    <div class="studio" id="hStudio">Jess Ferreira Fotografia</div>
+    <h1 id="hNome"></h1>
+    <p>Toque no coração das fotos que você mais amou. Toque na foto para vê-la grande e deixar um comentário.</p>
+  </header>
+  <div class="done hidden" id="done"></div>
+  <div class="tabs">
+    <button data-f="all" class="on">Todas (<span id="nAll">0</span>)</button>
+    <button data-f="fav">Favoritas (<span id="nFav">0</span>)</button>
+  </div>
+  <div class="saved" id="saved"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="bar">
+    <div class="info">
+      <div class="count" id="count"></div>
+      <div class="sub" id="sub"></div>
+      <div class="progress"><i id="prog"></i></div>
+    </div>
+    <button class="btn" id="mainBtn">Finalizar</button>
+  </div>
+</section>
+
+<div class="lb" id="lb">
+  <div class="top"><span id="lbName"></span><button id="lbClose" aria-label="Fechar">×</button></div>
+  <div class="stage">
+    <button class="nav prev" id="lbPrev" aria-label="Anterior">‹</button>
+    <img id="lbImg" alt="">
+    <button class="nav next" id="lbNext" aria-label="Próxima">›</button>
+  </div>
+  <div class="bottom">
+    <textarea id="lbNote" rows="2" maxlength="500" placeholder="Comentário para a fotógrafa (opcional)"></textarea>
+    <button class="fav" id="lbFav"></button>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const HEART = f => `<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.6-9.5-9.3C1.1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.1 5 3 1.4-1.9 2.9-3 5-3 3.8 0 5.9 3.8 4.5 7.2C19.5 16.4 12 21 12 21z"/></svg>`;
+const brl = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const semExt = n => n.replace(/\.[^.]+$/,'');
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const params = new URLSearchParams(location.search);
+const DEMO = !API_URL || params.has('demo');
+let CODIGO = (params.get('c') || '').trim();
+let SENHA = '';
+
+// ================= comunicação com a planilha =================
+async function api(action, dados){
+  if (DEMO) return demoApi(action, dados);
+  const r = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({action, c:CODIGO, senha:SENHA}, dados||{}))});
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.erro || 'Algo deu errado');
+  return j;
+}
+function thumb(f, w){ return f.src || `https://drive.google.com/thumbnail?id=${f.id}&sz=w${w}`; }
+function thumbAlt(f, w){ return `https://lh3.googleusercontent.com/d/${f.id}=w${w}`; }
+
+// ================= estado =================
+let G = null;            // dados da galeria
+let picks = [];          // nomes favoritados
+let adding = false;      // cliente está comprando mais fotos
+let filter = 'all', cur = -1;
+
+const isPick = n => picks.includes(n);
+const isLocked = n => G.travadas.includes(n);
+const enviado = () => G.envios > 0 && !adding;
+function calc(){
+  const n = picks.length, extras = Math.max(0, n - G.pacote);
+  const pagas = Math.max(0, G.travadas.length - G.pacote);
+  return {n, extras, novasExtras: extras - pagas, custo: extras*G.preco, novoCusto: (extras-pagas)*G.preco,
+          novas: picks.filter(x=>!isLocked(x)).length};
+}
+
+// ================= entrar =================
+function show(id){ ['login','loading','app'].forEach(s=>$(s).classList.toggle('hidden', s!==id)); }
+if (!CODIGO && !DEMO) $('fCod').classList.remove('hidden');
+if (DEMO){ $('demoFlag').classList.remove('hidden'); if(!CODIGO) CODIGO='demo'; }
+
+try { SENHA = sessionStorage.getItem('senha_'+CODIGO) || ''; } catch(e){}
+if (SENHA) entrar(); else show('login');
+
+$('loginForm').onsubmit = e => {
+  e.preventDefault();
+  if (!CODIGO) CODIGO = $('fCod').value.trim();
+  SENHA = $('fSenha').value.trim();
+  if (!CODIGO || !SENHA) { $('loginErr').textContent = 'Preencha a senha.'; return; }
+  entrar();
+};
+
+async function entrar(){
+  show('loading');
+  try {
+    G = await api('abrir');
+    try { sessionStorage.setItem('senha_'+CODIGO, SENHA); } catch(e){}
+    picks = Array.from(new Set([...(G.travadas||[]), ...(G.rascunho||[])]));
+    G.comentarios = G.comentarios || {};
+    adding = G.envios > 0 && picks.length > G.travadas.length;
+    $('hNome').textContent = G.ensaio ? `${G.ensaio} — ${G.nome}` : G.nome;
+    $('hStudio').textContent = G.estudio || 'Jess Ferreira Fotografia';
+    document.title = `Seleção · ${G.nome}`;
+    $('nAll').textContent = G.fotos.length;
+    show('app'); render();
+  } catch(err){
+    try { sessionStorage.removeItem('senha_'+CODIGO); } catch(e){}
+    if (!params.get('c') && !DEMO) CODIGO = '';
+    show('login');
+    $('loginErr').textContent = err.message === 'Failed to fetch' ? 'Sem conexão. Tente de novo.' : err.message;
+  }
+}
+
+// ================= galeria =================
+function lista(){ return filter==='fav' ? G.fotos.filter(f=>isPick(f.nome)) : G.fotos; }
+function render(){
+  const L = lista();
+  $('grid').innerHTML = L.length ? L.map(f=>{
+    const n = esc(f.nome);
+    return `<div class="ph ${isPick(f.nome)?'sel':''} ${isLocked(f.nome)?'locked':''}" data-n="${n}">
+      <img src="${thumb(f,500)}" data-alt="${f.id?thumbAlt(f,500):''}" alt="" loading="lazy" onload="this.classList.add('ok')" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}">
+      ${isLocked(f.nome)?'<span class="tag">Escolhida</span>':''}
+      ${G.comentarios[f.nome]?'<span class="cm">💬</span>':''}
+      <button class="heart" data-h="${n}" aria-label="Favoritar">${HEART(isPick(f.nome))}</button>
+    </div>`}).join('')
+    : `<div class="empty">Nenhuma favorita ainda.<br>Toque no coração das fotos que você amou.</div>`;
+  renderBar();
+}
+
+function renderBar(){
+  const c = calc();
+  $('nFav').textContent = c.n;
+  const count=$('count'), sub=$('sub'), prog=$('prog'), btn=$('mainBtn'), done=$('done');
+  done.classList.add('hidden');
+  btn.className = 'btn';
+
+  if (enviado()){
+    count.textContent = `Seleção enviada · ${c.n} fotos`;
+    sub.className='sub'; sub.textContent='Quer mais alguma? Pode adicionar quando quiser.';
+    prog.style.width='100%';
+    btn.textContent='Quero mais fotos'; btn.className='btn ghost'; btn.disabled=false;
+    done.classList.remove('hidden');
+    done.innerHTML = `<b>Obrigada! Sua seleção foi enviada 💛</b>${c.n} fotos escolhidas${c.extras?` (${c.extras} extras)`:''}. Agora é com a Jess!`;
+    return;
+  }
+  if (adding){
+    count.textContent = `${c.novas} foto${c.novas===1?'':'s'} nova${c.novas===1?'':'s'}`;
+    sub.className = c.novasExtras>0 ? 'sub extra' : 'sub';
+    sub.textContent = c.novasExtras>0 ? `+ ${c.novasExtras} extra${c.novasExtras>1?'s':''} · ${brl(c.novoCusto)}` : 'Toque no coração das fotos que quer adicionar';
+    prog.style.width='100%';
+    btn.textContent = c.novas ? 'Enviar novas' : 'Cancelar';
+    if (!c.novas) btn.className='btn ghost';
+    btn.disabled=false;
+    return;
+  }
+  count.textContent = `${Math.min(c.n,G.pacote)} de ${G.pacote} escolhidas`;
+  if (c.extras>0){ sub.className='sub extra'; sub.textContent=`+ ${c.extras} extra${c.extras>1?'s':''} · ${brl(c.custo)}`; }
+  else { sub.className='sub'; sub.textContent = c.n===G.pacote ? 'Pacote completo! Pode finalizar 💛' : `Seu pacote inclui ${G.pacote} fotos · faltam ${G.pacote-c.n}`; }
+  prog.style.width = Math.min(100, c.n/G.pacote*100)+'%';
+  btn.textContent='Finalizar'; btn.disabled = c.n===0;
+}
+
+function toggle(n){
+  if (isLocked(n)) { toast('Essa já foi escolhida e enviada'); return false; }
+  if (enviado()) { toast('Toque em "Quero mais fotos" para adicionar'); return false; }
+  const antes = calc().extras;
+  picks = isPick(n) ? picks.filter(x=>x!==n) : [...picks, n];
+  if (!adding && antes===0 && calc().extras===1) toast(`Passou do pacote · cada extra ${brl(G.preco)}`);
+  agendarSalvar();
+  return true;
+}
+
+// salva o rascunho na planilha (para não perder se fechar o site)
+let tSalvar;
+function agendarSalvar(){
+  clearTimeout(tSalvar); $('saved').textContent='';
+  tSalvar = setTimeout(async ()=>{
+    try { await api('salvar', {rascunho:picks, comentarios:G.comentarios}); $('saved').textContent='✓ Salvo'; }
+    catch(e){ $('saved').textContent='Não foi possível salvar agora'; }
+  }, 1500);
+}
+
+$('grid').addEventListener('click', e=>{
+  const h = e.target.closest('[data-h]');
+  if (h){ e.stopPropagation(); if (toggle(h.dataset.h)) render(); return; }
+  const ph = e.target.closest('.ph');
+  if (ph) abrirFoto(ph.dataset.n);
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  filter=b.dataset.f; document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b)); render();
+});
+
+// ================= foto grande =================
+const lb=$('lb'), lbImg=$('lbImg'), lbNote=$('lbNote');
+function abrirFoto(n){ cur = G.fotos.findIndex(f=>f.nome===n); lb.classList.add('open'); pintar(); }
+function pintar(){
+  const f = G.fotos[cur];
+  lbImg.dataset.alt = f.id ? thumbAlt(f,1600) : '';
+  lbImg.onerror = ()=>{ if(lbImg.dataset.alt){ lbImg.src=lbImg.dataset.alt; lbImg.dataset.alt=''; } };
+  lbImg.src = thumb(f,1600);
+  $('lbName').textContent = semExt(f.nome);
+  const on = isPick(f.nome), b=$('lbFav');
+  b.className='fav'+(on?' on':'');
+  b.innerHTML = HEART(on) + (isLocked(f.nome)?'Já escolhida':on?'Favorita':'Favoritar');
+  lbNote.value = G.comentarios[f.nome] || '';
+  lbNote.disabled = isLocked(f.nome) || enviado();
+}
+function passo(d){
+  const L = lista(); if (!L.length) return;
+  let k = L.findIndex(f=>f.nome===G.fotos[cur].nome);
+  k = (k + d + L.length) % L.length;
+  cur = G.fotos.indexOf(L[k]); pintar();
+}
+$('lbPrev').onclick=()=>passo(-1);
+$('lbNext').onclick=()=>passo(1);
+$('lbClose').onclick=()=>{ lb.classList.remove('open'); render(); };
+$('lbFav').onclick=()=>{ if(toggle(G.fotos[cur].nome)){ pintar(); renderBar(); } };
+lbNote.oninput=()=>{ const n=G.fotos[cur].nome, t=lbNote.value.trim(); if(t) G.comentarios[n]=t; else delete G.comentarios[n]; agendarSalvar(); };
+let tx=null;
+lb.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+lb.addEventListener('touchend',e=>{ if(tx===null)return; const dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>50 && e.target.tagName!=='TEXTAREA') passo(dx<0?1:-1); tx=null; });
+document.addEventListener('keydown',e=>{ if(!lb.classList.contains('open')||e.target===lbNote)return; if(e.key==='ArrowRight')passo(1); if(e.key==='ArrowLeft')passo(-1); if(e.key==='Escape')$('lbClose').click(); });
+
+// ================= finalizar / comprar mais =================
+const modal=$('modal'), sheet=$('sheet');
+const fechar=()=>modal.classList.remove('open');
+modal.onclick=e=>{ if(e.target===modal) fechar(); };
+
+$('mainBtn').onclick=()=>{
+  const c = calc();
+  if (enviado()){ adding=true; render(); toast(`Escolha as novas fotos · cada extra ${brl(G.preco)}`); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if (adding && !c.novas){ adding=false; picks=G.travadas.slice(); agendarSalvar(); render(); return; }
+  if (adding){
+    sheet.innerHTML = `<h2>Adicionar fotos</h2><p>Confira antes de enviar.</p>
+      <div class="lines"><div><span>Fotos novas</span><span>${c.novas}</span></div>
+      ${c.novasExtras ? `<div><span>${c.novasExtras} × ${brl(G.preco)}</span><span>${brl(c.novoCusto)}</span></div>
+        <div class="total"><span>Total</span><span>${brl(c.novoCusto)}</span></div>`
+      : `<div><span>Ainda dentro do pacote</span><span>${brl(0)}</span></div>`}</div>
+      <div class="actions"><button class="btn ghost" id="mVoltar">Voltar</button><button class="btn" id="mOk">Enviar</button></div>`;
+  } else {
+    const falta = G.pacote - c.n;
+    sheet.innerHTML = `<h2>Finalizar seleção?</h2>
+      <p>${falta>0 ? `Você escolheu ${c.n} de ${G.pacote}. Ainda pode escolher mais ${falta} sem custo.` : 'Depois de enviar, a Jess começa a edição das suas fotos.'}</p>
+      <div class="lines">
+        <div><span>Incluídas no pacote</span><span>${Math.min(c.n,G.pacote)}</span></div>
+        ${c.extras ? `<div><span>Extras · ${c.extras} × ${brl(G.preco)}</span><span>${brl(c.custo)}</span></div>` : ''}
+        <div class="total"><span>Total a pagar</span><span>${brl(c.custo)}</span></div>
+      </div>
+      <div class="actions"><button class="btn ghost" id="mVoltar">Revisar</button><button class="btn" id="mOk">Enviar seleção</button></div>`;
+  }
+  modal.classList.add('open');
+  $('mVoltar').onclick = fechar;
+  $('mOk').onclick = enviar;
+};
+
+async function enviar(){
+  const b = $('mOk'); b.disabled=true; b.textContent='Enviando…';
+  clearTimeout(tSalvar);
+  try {
+    const novas = picks.filter(n=>!isLocked(n));
+    const r = await api('enviar', {novas, comentarios:G.comentarios});
+    G.travadas = r.travadas; G.envios = r.envios; picks = r.travadas.slice(); adding=false;
+    sheet.innerHTML = `<h2>Enviado! 💛</h2>
+      <p>${r.envios===1 ? 'Sua seleção chegou para a Jess. Agora é só aguardar suas fotos editadas.' : 'Suas novas fotos chegaram para a Jess.'}</p>
+      ${r.valorNovo>0 ? `<div class="lines"><div class="total"><span>Valor das extras</span><span>${brl(r.valorNovo)}</span></div></div>
+        <p>A Jess vai te mandar os dados para o pagamento.</p>` : ''}
+      <div class="actions"><button class="btn" id="mFim">Ver minhas fotos</button></div>`;
+    $('mFim').onclick = fechar;
+    render();
+  } catch(err){
+    b.disabled=false; b.textContent='Tentar de novo';
+    toast(err.message==='Failed to fetch' ? 'Sem conexão. Tente de novo.' : err.message);
+  }
+}
+
+let tt;
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2400); }
+
+// ================= modo demonstração =================
+function demoFoto(i){
+  const h1=(20+i*37)%360, h2=(h1+40)%360, r=n=>((Math.sin(i*99+n)*10000)%1+1)%1;
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(${h1},35%,82%)'/><stop offset='1' stop-color='hsl(${h2},30%,62%)'/></linearGradient><radialGradient id='s'><stop offset='0' stop-color='rgba(255,250,240,.9)'/><stop offset='1' stop-color='rgba(255,250,240,0)'/></radialGradient></defs><rect width='200' height='300' fill='url(#g)'/><circle cx='${60+r(1)*80}' cy='${90+r(2)*120}' r='${50+r(3)*40}' fill='url(#s)'/><ellipse cx='${80+r(4)*40}' cy='${200+r(5)*30}' rx='${45+r(6)*20}' ry='${60+r(7)*25}' fill='hsla(${h2},25%,40%,.35)'/><circle cx='${85+r(8)*30}' cy='${120+r(9)*20}' r='18' fill='hsla(${h2},25%,35%,.35)'/><text x='100' y='160' font-family='Georgia' font-size='12' fill='rgba(255,255,255,.55)' text-anchor='middle' transform='rotate(-30 100 160)'>JESS FERREIRA · PRÉVIA</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function demoApi(action, d){
+  const K='demo-selecao';
+  let s; try{ s=JSON.parse(localStorage.getItem(K)) }catch(e){}
+  s = s || {travadas:[], rascunho:[], comentarios:{}, envios:0};
+  const keep=()=>{ try{localStorage.setItem(K,JSON.stringify(s))}catch(e){} };
+  return new Promise(res=>setTimeout(()=>{
+    if (action==='abrir') res({ok:true, nome:'Maria', ensaio:'Ensaio Gestante', estudio:'Jess Ferreira Fotografia', pacote:20, preco:35,
+      fotos:Array.from({length:120},(_,i)=>({nome:`IMG_${String(i+1).padStart(4,'0')}.jpg`, src:demoFoto(i)})), ...s});
+    if (action==='salvar'){ s.rascunho=d.rascunho; s.comentarios=d.comentarios; keep(); res({ok:true}); }
+    if (action==='enviar'){
+      const antes=s.travadas.length; s.travadas=s.travadas.concat(d.novas).sort(); s.rascunho=s.travadas.slice(); s.comentarios=d.comentarios; s.envios++;
+      const ex=Math.max(0,s.travadas.length-20)-Math.max(0,antes-20); keep();
+      res({ok:true, travadas:s.travadas, extrasNovas:ex, valorNovo:ex*35, envios:s.envios});
+    }
+  }, 400));
+}
+</script>
+</body>
+</html>
