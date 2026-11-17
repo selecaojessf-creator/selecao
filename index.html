@@ -47,6 +47,13 @@ header p{color:var(--soft);font-size:14px;max-width:460px;margin:0 auto;line-hei
 .tabs{display:flex;gap:8px;justify-content:center;padding:6px 16px 12px;position:sticky;top:0;background:var(--bg);z-index:5}
 .tabs button{padding:8px 16px;border-radius:999px;border:1px solid var(--line);font-size:14px;background:var(--card)}
 .tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.precos{max-width:640px;margin:0 12px 10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--soft);line-height:1.5}
+@media(min-width:664px){.precos{margin:0 auto 10px}}
+.precos b{color:var(--ink);font-weight:600}
+.precos .tbl{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.precos .tbl span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink);font-size:12px;white-space:nowrap}
+.precos .todas{width:100%;padding:10px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:14px}
+.sheet .dica{background:var(--accent-soft);color:#7d4a39;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;margin-top:-4px}
 .saved{font-size:12px;color:var(--soft);text-align:center;height:16px;margin-bottom:6px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px;max-width:1100px;margin:0 auto}
 @media(min-width:700px){.grid{grid-template-columns:repeat(5,1fr);gap:8px;padding:0 16px}}
@@ -141,6 +148,7 @@ header p{color:var(--soft);font-size:14px;max-width:460px;margin:0 auto;line-hei
     <button data-f="all" class="on">Todas (<span id="nAll">0</span>)</button>
     <button data-f="fav">Favoritas (<span id="nFav">0</span>)</button>
   </div>
+  <div class="precos" id="precos"></div>
   <div class="saved" id="saved"></div>
   <div class="grid" id="grid"></div>
 
@@ -202,12 +210,38 @@ let filter = 'all', cur = -1;
 const isPick = n => picks.includes(n);
 const isLocked = n => G.travadas.includes(n);
 const enviado = () => G.envios > 0 && !adding;
+// ---- preço das fotos extras: escolhe sempre a combinação mais barata
+// (avulsas, pacotes de extras ou "todas as fotos")
+function custoExtras(e){
+  e = Math.max(0, e|0);
+  if (!e) return {valor:0, cobre:0, sobra:0, texto:''};
+  const unit = G.preco, pks = G.pacotesExtras || [], todas = G.precoTodas;
+  const c = [{v:0, u:0, p:{}}];
+  for (let n=1; n<=e; n++){
+    let b = {v:c[n-1].v+unit, u:c[n-1].u+1, p:c[n-1].p};
+    for (const pk of pks){
+      const prev = c[Math.max(0, n-pk.qtd)], v = prev.v + pk.valor;
+      if (v < b.v) b = {v, u:prev.u, p:Object.assign({}, prev.p, {[pk.qtd]:(prev.p[pk.qtd]||0)+1})};
+    }
+    c[n] = b;
+  }
+  const r = c[e], livres = G.fotos.length - G.pacote;
+  if (todas && todas <= r.v) return {valor:todas, todas:true, cobre:livres, sobra:Math.max(0, livres-e), texto:'Todas as fotos'};
+  const partes = [];
+  pks.forEach(pk=>{ const q=r.p[pk.qtd]; if(q) partes.push(`${q>1?q+' × ':''}pacote ${pk.qtd} extras`); });
+  if (r.u) partes.push(`${r.u} avulsa${r.u>1?'s':''}`);
+  const cobre = r.u + pks.reduce((s,pk)=>s+(r.p[pk.qtd]||0)*pk.qtd, 0);
+  return {valor:r.v, cobre, sobra:cobre-e, texto:partes.join(' + ')};
+}
 function calc(){
   const n = picks.length, extras = Math.max(0, n - G.pacote);
   const pagas = Math.max(0, G.travadas.length - G.pacote);
-  return {n, extras, novasExtras: extras - pagas, custo: extras*G.preco, novoCusto: (extras-pagas)*G.preco,
+  const plano = custoExtras(extras), pago = custoExtras(pagas);
+  return {n, extras, novasExtras: extras - pagas, custo: plano.valor, plano,
+          novoCusto: Math.max(0, plano.valor - pago.valor),
           novas: picks.filter(x=>!isLocked(x)).length};
 }
+const dicaSobra = p => p.sobra>0 ? ` — escolha mais ${p.sobra} sem pagar nada a mais` : '';
 
 // ================= entrar =================
 function show(id){ ['login','loading','app'].forEach(s=>$(s).classList.toggle('hidden', s!==id)); }
@@ -229,6 +263,8 @@ async function entrar(){
   show('loading');
   try {
     G = await api('abrir');
+    if (!Array.isArray(G.pacotesExtras)) G.pacotesExtras = [{qtd:10, valor:180}, {qtd:20, valor:320}];
+    if (G.precoTodas == null) G.precoTodas = 400;
     try { sessionStorage.setItem('senha_'+CODIGO, SENHA); } catch(e){}
     picks = Array.from(new Set([...(G.travadas||[]), ...(G.rascunho||[])]));
     G.comentarios = G.comentarios || {};
@@ -262,7 +298,29 @@ function render(){
   renderBar();
 }
 
+function renderPrecos(){
+  const box = $('precos');
+  const livres = G.fotos.length - G.pacote;
+  if (livres <= 0 || enviado()) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const pks = (G.pacotesExtras||[]).filter(pk=>pk.qtd < livres);
+  const temTodas = G.precoTodas && picks.length < G.fotos.length;
+  box.innerHTML = `Seu pacote inclui <b>${G.pacote} fotos</b>. Quer mais? Fotos extras:
+    <div class="tbl"><span>1 foto · ${brl(G.preco)}</span>${pks.map(pk=>`<span>${pk.qtd} fotos · ${brl(pk.valor)}</span>`).join('')}${G.precoTodas?`<span>Todas · ${brl(G.precoTodas)}</span>`:''}</div>
+    ${temTodas ? `<button class="todas" id="btnTodas">Quero todas as ${G.fotos.length} fotos · ${brl(G.precoTodas)}</button>` : ''}`;
+  const bt = $('btnTodas');
+  if (bt) bt.onclick = () => {
+    sheet.innerHTML = `<h2>Ficar com todas?</h2>
+      <p>Todas as ${G.fotos.length} fotos do ensaio serão marcadas. O valor das extras fica em <b>${brl(G.precoTodas)}</b>${(()=>{const pago=custoExtras(G.travadas.length-G.pacote).valor; return pago>0?`. Como você já pagou ${brl(pago)}, falta <b>${brl(Math.max(0,G.precoTodas-pago))}</b>`:''})()}.</p>
+      <div class="actions"><button class="btn ghost" id="mVoltar">Voltar</button><button class="btn" id="mOk">Quero todas</button></div>`;
+    modal.classList.add('open');
+    $('mVoltar').onclick = fechar;
+    $('mOk').onclick = () => { picks = G.fotos.map(f=>f.nome); fechar(); agendarSalvar(); render(); toast('Todas as fotos marcadas 💛'); };
+  };
+}
+
 function renderBar(){
+  renderPrecos();
   const c = calc();
   $('nFav').textContent = c.n;
   const count=$('count'), sub=$('sub'), prog=$('prog'), btn=$('mainBtn'), done=$('done');
@@ -281,7 +339,7 @@ function renderBar(){
   if (adding){
     count.textContent = `${c.novas} foto${c.novas===1?'':'s'} nova${c.novas===1?'':'s'}`;
     sub.className = c.novasExtras>0 ? 'sub extra' : 'sub';
-    sub.textContent = c.novasExtras>0 ? `+ ${c.novasExtras} extra${c.novasExtras>1?'s':''} · ${brl(c.novoCusto)}` : 'Toque no coração das fotos que quer adicionar';
+    sub.textContent = c.novasExtras>0 ? `+ ${c.novasExtras} extra${c.novasExtras>1?'s':''} · ${brl(c.novoCusto)} (${c.plano.texto})${dicaSobra(c.plano)}` : 'Toque no coração das fotos que quer adicionar';
     prog.style.width='100%';
     btn.textContent = c.novas ? 'Enviar novas' : 'Cancelar';
     if (!c.novas) btn.className='btn ghost';
@@ -289,7 +347,7 @@ function renderBar(){
     return;
   }
   count.textContent = `${Math.min(c.n,G.pacote)} de ${G.pacote} escolhidas`;
-  if (c.extras>0){ sub.className='sub extra'; sub.textContent=`+ ${c.extras} extra${c.extras>1?'s':''} · ${brl(c.custo)}`; }
+  if (c.extras>0){ sub.className='sub extra'; sub.textContent=`+ ${c.extras} extra${c.extras>1?'s':''} · ${brl(c.custo)} (${c.plano.texto})${dicaSobra(c.plano)}`; }
   else { sub.className='sub'; sub.textContent = c.n===G.pacote ? 'Pacote completo! Pode finalizar 💛' : `Seu pacote inclui ${G.pacote} fotos · faltam ${G.pacote-c.n}`; }
   prog.style.width = Math.min(100, c.n/G.pacote*100)+'%';
   btn.textContent='Finalizar'; btn.disabled = c.n===0;
@@ -300,7 +358,7 @@ function toggle(n){
   if (enviado()) { toast('Toque em "Quero mais fotos" para adicionar'); return false; }
   const antes = calc().extras;
   picks = isPick(n) ? picks.filter(x=>x!==n) : [...picks, n];
-  if (!adding && antes===0 && calc().extras===1) toast(`Passou do pacote · cada extra ${brl(G.preco)}`);
+  if (!adding && antes===0 && calc().extras===1) toast(`Passou do pacote · a partir de agora são fotos extras`);
   agendarSalvar();
   return true;
 }
@@ -363,14 +421,17 @@ modal.onclick=e=>{ if(e.target===modal) fechar(); };
 
 $('mainBtn').onclick=()=>{
   const c = calc();
-  if (enviado()){ adding=true; render(); toast(`Escolha as novas fotos · cada extra ${brl(G.preco)}`); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if (enviado()){ adding=true; render(); toast('Escolha as novas fotos · veja os preços das extras'); window.scrollTo({top:0,behavior:'smooth'}); return; }
   if (adding && !c.novas){ adding=false; picks=G.travadas.slice(); agendarSalvar(); render(); return; }
+  const dica = c.plano.sobra>0 ? `<p class="dica">Pelo mesmo valor você ainda pode escolher mais <b>${c.plano.sobra} foto${c.plano.sobra>1?'s':''}</b>. Quer voltar e escolher?</p>` : '';
   if (adding){
     sheet.innerHTML = `<h2>Adicionar fotos</h2><p>Confira antes de enviar.</p>
       <div class="lines"><div><span>Fotos novas</span><span>${c.novas}</span></div>
-      ${c.novasExtras ? `<div><span>${c.novasExtras} × ${brl(G.preco)}</span><span>${brl(c.novoCusto)}</span></div>
-        <div class="total"><span>Total</span><span>${brl(c.novoCusto)}</span></div>`
-      : `<div><span>Ainda dentro do pacote</span><span>${brl(0)}</span></div>`}</div>
+      ${c.novoCusto ? `<div><span>Extras · ${c.plano.texto}</span><span>${brl(c.custo)}</span></div>
+        ${c.custo>c.novoCusto?`<div><span>Já pago antes</span><span>− ${brl(c.custo-c.novoCusto)}</span></div>`:''}
+        <div class="total"><span>Total a pagar</span><span>${brl(c.novoCusto)}</span></div>`
+      : `<div><span>Sem custo adicional</span><span>${brl(0)}</span></div>`}</div>
+      ${dica}
       <div class="actions"><button class="btn ghost" id="mVoltar">Voltar</button><button class="btn" id="mOk">Enviar</button></div>`;
   } else {
     const falta = G.pacote - c.n;
@@ -378,9 +439,10 @@ $('mainBtn').onclick=()=>{
       <p>${falta>0 ? `Você escolheu ${c.n} de ${G.pacote}. Ainda pode escolher mais ${falta} sem custo.` : 'Depois de enviar, a Jess começa a edição das suas fotos.'}</p>
       <div class="lines">
         <div><span>Incluídas no pacote</span><span>${Math.min(c.n,G.pacote)}</span></div>
-        ${c.extras ? `<div><span>Extras · ${c.extras} × ${brl(G.preco)}</span><span>${brl(c.custo)}</span></div>` : ''}
+        ${c.extras ? `<div><span>${c.extras} extra${c.extras>1?'s':''} · ${c.plano.texto}</span><span>${brl(c.custo)}</span></div>` : ''}
         <div class="total"><span>Total a pagar</span><span>${brl(c.custo)}</span></div>
       </div>
+      ${dica}
       <div class="actions"><button class="btn ghost" id="mVoltar">Revisar</button><button class="btn" id="mOk">Enviar seleção</button></div>`;
   }
   modal.classList.add('open');
@@ -423,13 +485,14 @@ function demoApi(action, d){
   s = s || {travadas:[], rascunho:[], comentarios:{}, envios:0};
   const keep=()=>{ try{localStorage.setItem(K,JSON.stringify(s))}catch(e){} };
   return new Promise(res=>setTimeout(()=>{
-    if (action==='abrir') res({ok:true, nome:'Maria', ensaio:'Ensaio Gestante', estudio:'Jess Ferreira Fotografia', pacote:20, preco:35,
+    if (action==='abrir') res({ok:true, nome:'Maria', ensaio:'Ensaio Gestante', estudio:'Jess Ferreira Fotografia', pacote:20, preco:35, pacotesExtras:[{qtd:10,valor:180},{qtd:20,valor:320}], precoTodas:400,
       fotos:Array.from({length:120},(_,i)=>({nome:`IMG_${String(i+1).padStart(4,'0')}.jpg`, src:demoFoto(i)})), ...s});
     if (action==='salvar'){ s.rascunho=d.rascunho; s.comentarios=d.comentarios; keep(); res({ok:true}); }
     if (action==='enviar'){
       const antes=s.travadas.length; s.travadas=s.travadas.concat(d.novas).sort(); s.rascunho=s.travadas.slice(); s.comentarios=d.comentarios; s.envios++;
       const ex=Math.max(0,s.travadas.length-20)-Math.max(0,antes-20); keep();
-      res({ok:true, travadas:s.travadas, extrasNovas:ex, valorNovo:ex*35, envios:s.envios});
+      const valorNovo = custoExtras(s.travadas.length-20).valor - custoExtras(antes-20).valor;
+      res({ok:true, travadas:s.travadas, extrasNovas:ex, valorNovo, envios:s.envios});
     }
   }, 400));
 }
