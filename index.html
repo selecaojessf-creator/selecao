@@ -183,6 +183,7 @@ const $ = id => document.getElementById(id);
 const HEART = f => `<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.6-9.5-9.3C1.1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.1 5 3 1.4-1.9 2.9-3 5-3 3.8 0 5.9 3.8 4.5 7.2C19.5 16.4 12 21 12 21z"/></svg>`;
 const brl = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const semExt = n => n.replace(/\.[^.]+$/,'');
+const rotulo = n => { const m = semExt(n).match(/(\d+)\D*$/); return m ? 'Foto ' + Number(m[1]) : semExt(n); };
 const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const params = new URLSearchParams(location.search);
 const DEMO = !API_URL || params.has('demo');
@@ -391,7 +392,7 @@ function pintar(){
   lbImg.dataset.alt = f.id ? thumbAlt(f,1600) : '';
   lbImg.onerror = ()=>{ if(lbImg.dataset.alt){ lbImg.src=lbImg.dataset.alt; lbImg.dataset.alt=''; } };
   lbImg.src = thumb(f,1600);
-  $('lbName').textContent = semExt(f.nome);
+  $('lbName').textContent = rotulo(f.nome);
   const on = isPick(f.nome), b=$('lbFav');
   b.className='fav'+(on?' on':'');
   b.innerHTML = HEART(on) + (isLocked(f.nome)?'Já escolhida':on?'Favorita':'Favoritar');
