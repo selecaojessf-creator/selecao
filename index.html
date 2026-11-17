@@ -239,7 +239,7 @@ function custoExtras(e){
     let b = {v:c[n-1].v+unit, u:c[n-1].u+1, p:c[n-1].p};
     for (const pk of pks){
       const prev = c[Math.max(0, n-pk.qtd)], v = prev.v + pk.valor;
-      if (v < b.v) b = {v, u:prev.u, p:Object.assign({}, prev.p, {[pk.qtd]:(prev.p[pk.qtd]||0)+1})};
+      if (v <= b.v) b = {v, u:prev.u, p:Object.assign({}, prev.p, {[pk.qtd]:(prev.p[pk.qtd]||0)+1})};
     }
     c[n] = b;
   }
@@ -281,8 +281,8 @@ async function entrar(){
   show('loading');
   try {
     G = await api('abrir');
-    if (!Array.isArray(G.pacotesExtras)) G.pacotesExtras = [{qtd:10, valor:180}, {qtd:20, valor:320}];
-    if (G.precoTodas == null) G.precoTodas = 400;
+    if (!Array.isArray(G.pacotesExtras)) G.pacotesExtras = [{qtd:10, valor:144}, {qtd:20, valor:256}];
+    if (G.precoTodas == null) G.precoTodas = 320;
     try { sessionStorage.setItem('senha_'+CODIGO, SENHA); } catch(e){}
     picks = Array.from(new Set([...(G.travadas||[]), ...(G.rascunho||[])]));
     G.comentarios = G.comentarios || {};
@@ -553,7 +553,7 @@ function demoApi(action, d){
   s = s || {travadas:[], rascunho:[], comentarios:{}, envios:0};
   const keep=()=>{ try{localStorage.setItem(K,JSON.stringify(s))}catch(e){} };
   return new Promise(res=>setTimeout(()=>{
-    if (action==='abrir') res({ok:true, nome:'Maria', ensaio:'Ensaio Gestante', estudio:'Jess Ferreira Fotografia', pacote:20, preco:35, pacotesExtras:[{qtd:10,valor:180},{qtd:20,valor:320}], precoTodas:400,
+    if (action==='abrir') res({ok:true, nome:'Maria', ensaio:'Ensaio Gestante', estudio:'Jess Ferreira Fotografia', pacote:20, preco:28, pacotesExtras:[{qtd:10,valor:144},{qtd:20,valor:256}], precoTodas:320,
       fotos:Array.from({length:120},(_,i)=>({nome:`IMG_${String(i+1).padStart(4,'0')}.jpg`, src:demoFoto(i)})), ...s});
     if (action==='salvar'){ s.rascunho=d.rascunho; s.comentarios=d.comentarios; keep(); res({ok:true}); }
     if (action==='enviar'){
