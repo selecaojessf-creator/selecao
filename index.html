@@ -13,7 +13,12 @@
   // Enquanto estiver vazio, o site abre em modo demonstração.
   const API_URL = 'https://script.google.com/macros/s/AKfycbx00f5d2nk5_oGIaiAK44Is9YlyibTBaGbJlpTtT3uTY0KDnxzed6prcT4BJvHbIi9DKA/exec';
   // ============================================================
+  // Pagamento das fotos extras
+  const PIX = { chave: '66632781000145', chaveTexto: '66.632.781/0001-45 (CNPJ)',
+                nome: 'JESSICA CRISTINA FERREIRA', titular: 'Jessica Cristina Ferreira · Bradesco', cidade: 'MACAE' };
+  const WHATSAPP = '5522998641344';
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 :root{--bg:#faf7f3;--card:#fff;--ink:#2b2522;--soft:#7a6f68;--line:#e9e2da;--accent:#b5715a;--accent-soft:#f3e4dd;--warn:#c0843d}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -54,6 +59,18 @@ header p{color:var(--soft);font-size:14px;max-width:460px;margin:0 auto;line-hei
 .precos .tbl span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink);font-size:12px;white-space:nowrap}
 .precos .todas{width:100%;padding:10px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:14px}
 .sheet .dica{background:var(--accent-soft);color:#7d4a39;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;margin-top:-4px}
+.pay{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0 4px;text-align:center}
+.pay .pv{font-size:13px;color:var(--soft)}
+.pay .valor{font-family:"Cormorant Garamond",Georgia,serif;font-size:38px;font-weight:600;color:var(--ink);line-height:1.1;margin:2px 0 10px}
+.pay .qr{display:flex;justify-content:center;margin:6px 0 12px}
+.pay .qr img,.pay .qr canvas{background:#fff;padding:8px;border-radius:10px}
+.pay .chave{font-size:13px;color:var(--soft);line-height:1.5;margin:10px 0 14px}
+.pay .chave b{color:var(--ink)}
+.pay .lnk{background:none;color:var(--accent);text-decoration:underline;font-size:13px;padding:2px 4px}
+.pay .btn{display:block;width:100%;text-decoration:none;margin-top:8px;text-align:center}
+.pay .btn.wa{background:#25a35a}
+.pay textarea{position:absolute;left:-9999px}
+.done .pagar{margin-top:10px;background:#3e5f47;color:#fff;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px}
 .saved{font-size:12px;color:var(--soft);text-align:center;height:16px;margin-bottom:6px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px;max-width:1100px;margin:0 auto}
 @media(min-width:700px){.grid{grid-template-columns:repeat(5,1fr);gap:8px;padding:0 16px}}
@@ -334,7 +351,9 @@ function renderBar(){
     prog.style.width='100%';
     btn.textContent='Quero mais fotos'; btn.className='btn ghost'; btn.disabled=false;
     done.classList.remove('hidden');
-    done.innerHTML = `<b>Obrigada! Sua seleção foi enviada 💛</b>${c.n} fotos escolhidas${c.extras?` (${c.extras} extras)`:''}. Agora é com a Jess!`;
+    done.innerHTML = `<b>Obrigada! Sua seleção foi enviada 💛</b>${c.n} fotos escolhidas${c.extras?` (${c.extras} extras)`:''}. Agora é com a Jess!` +
+      (ultimoValor ? `<br><button class="pagar" id="btnPagar">Ver dados de pagamento · ${brl(ultimoValor)}</button>` : '');
+    if (ultimoValor) $('btnPagar').onclick = () => mostrarPagamento(ultimoValor);
     return;
   }
   if (adding){
@@ -458,11 +477,14 @@ async function enviar(){
     const novas = picks.filter(n=>!isLocked(n));
     const r = await api('enviar', {novas, comentarios:G.comentarios});
     G.travadas = r.travadas; G.envios = r.envios; picks = r.travadas.slice(); adding=false;
+    ultimoValor = r.valorNovo > 0 ? r.valorNovo : 0;
+    try { sessionStorage.setItem('pag_'+CODIGO, ultimoValor); } catch(e){}
     sheet.innerHTML = `<h2>Enviado! 💛</h2>
-      <p>${r.envios===1 ? 'Sua seleção chegou para a Jess. Agora é só aguardar suas fotos editadas.' : 'Suas novas fotos chegaram para a Jess.'}</p>
-      ${r.valorNovo>0 ? `<div class="lines"><div class="total"><span>Valor das extras</span><span>${brl(r.valorNovo)}</span></div></div>
-        <p>A Jess vai te mandar os dados para o pagamento.</p>` : ''}
-      <div class="actions"><button class="btn" id="mFim">Ver minhas fotos</button></div>`;
+      <p>${r.envios===1 ? 'Sua seleção chegou para a Jess.' : 'Suas novas fotos chegaram para a Jess.'}
+      ${ultimoValor ? 'Para concluir, faça o pagamento das fotos extras:' : 'Agora é só aguardar suas fotos editadas.'}</p>
+      ${ultimoValor ? telaPagamento(ultimoValor) : ''}
+      <div class="actions"><button class="btn ${ultimoValor?'ghost':''}" id="mFim">Ver minhas fotos</button></div>`;
+    if (ultimoValor) ligarPagamento(ultimoValor);
     $('mFim').onclick = fechar;
     render();
   } catch(err){
@@ -470,6 +492,51 @@ async function enviar(){
     toast(err.message==='Failed to fetch' ? 'Sem conexão. Tente de novo.' : err.message);
   }
 }
+
+// ================= pagamento (Pix) =================
+function crc16(s){ let c=0xFFFF; for (let i=0;i<s.length;i++){ c^=s.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c&0x8000) ? ((c<<1)^0x1021)&0xFFFF : (c<<1)&0xFFFF; } return c.toString(16).toUpperCase().padStart(4,'0'); }
+const tlv = (id,v) => id + String(v.length).padStart(2,'0') + v;
+function pixCopiaCola(valor){
+  const conta = tlv('00','br.gov.bcb.pix') + tlv('01', PIX.chave);
+  const p = tlv('00','01') + tlv('26',conta) + tlv('52','0000') + tlv('53','986') + tlv('54', Number(valor).toFixed(2)) +
+            tlv('58','BR') + tlv('59', PIX.nome.slice(0,25)) + tlv('60', PIX.cidade.slice(0,15)) + tlv('62', tlv('05','***')) + '6304';
+  return p + crc16(p);
+}
+const zap = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+async function copiar(txt, el){
+  try { await navigator.clipboard.writeText(txt); toast('Copiado! Agora cole no app do banco'); }
+  catch(e){ el.style.position='static'; el.select(); toast('Selecione e copie o código'); }
+}
+function telaPagamento(valor){
+  const cc = pixCopiaCola(valor), nome = String(G.nome).split(' ')[0];
+  const msgComp = `Oi, Jess! Aqui é a ${nome} (${G.ensaio||'ensaio'}). Finalizei a seleção e paguei as fotos extras pelo Pix: ${brl(valor)}. Segue o comprovante 💛`;
+  const msgCartao = `Oi, Jess! Aqui é a ${nome} (${G.ensaio||'ensaio'}). Finalizei a seleção e quero pagar as fotos extras (${brl(valor)}) no cartão. Pode me mandar o link?`;
+  return `<div class="pay">
+      <div class="pv">Valor das fotos extras</div>
+      <div class="valor">${brl(valor)}</div>
+      <div class="pv">Pague pelo Pix e mande o comprovante no WhatsApp</div>
+      <div class="qr" id="qr"></div>
+      <button class="btn" id="cpCC">Copiar Pix copia e cola</button>
+      <textarea id="ccTxt" readonly>${cc}</textarea>
+      <div class="chave">ou use a chave Pix <b>${PIX.chaveTexto}</b><br>${PIX.titular}
+        <button class="lnk" id="cpChave">copiar chave</button></div>
+      <a class="btn wa" href="${zap(msgComp)}" target="_blank" rel="noopener">Enviar comprovante no WhatsApp</a>
+      <a class="btn ghost" href="${zap(msgCartao)}" target="_blank" rel="noopener">Prefiro pagar no cartão</a>
+    </div>`;
+}
+function ligarPagamento(valor){
+  const cc = pixCopiaCola(valor), box = $('ccTxt');
+  $('cpCC').onclick = () => copiar(cc, box);
+  $('cpChave').onclick = () => copiar(PIX.chave, box);
+  try { if (window.QRCode) new QRCode($('qr'), {text:cc, width:170, height:170, correctLevel:QRCode.CorrectLevel.M}); } catch(e){}
+}
+function mostrarPagamento(valor){
+  sheet.innerHTML = `<h2>Pagamento</h2>${telaPagamento(valor)}
+    <div class="actions"><button class="btn ghost" id="mFim">Voltar às fotos</button></div>`;
+  modal.classList.add('open'); ligarPagamento(valor); $('mFim').onclick = fechar;
+}
+let ultimoValor = 0;
+try { ultimoValor = Number(sessionStorage.getItem('pag_'+CODIGO)) || 0; } catch(e){}
 
 let tt;
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2400); }
